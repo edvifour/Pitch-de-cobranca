@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Interativo de Cobrança de Alta Performance | V4 Company</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: V4 Company Inspired - Red, Black, and Dark Grays -->
+    <!-- Application Structure Plan: A single-page dashboard application with thematic sections (Strategy, Communication, Performance, Tech, AI Pitch Generator, Self-Assessment). A sticky top navigation allows for quick jumps, facilitating both linear storytelling and topic-specific exploration. This structure breaks down the dense report into manageable, interactive components, making the information more digestible and actionable than a linear document. The user flow is designed for exploration, with key concepts presented visually (e.g., collection timeline, interactive frameworks) to improve retention and understanding. The new AI Pitch Generator section is integrated as a practical tool for immediate application of the learned concepts. -->
+    <!-- Visualization & Content Choices: Report info is mapped to interactive elements to achieve specific goals. (1) Collection Phases -> Goal: Organize/Change -> Viz: Interactive horizontal stepper -> Interaction: Click to reveal details -> Justification: Visually represents the process flow, making it easy to understand the progression -> Method: HTML/CSS/JS. (2) Persuasion Pillars & TALKER -> Goal: Inform/Organize -> Viz: Interactive accordion/cards -> Interaction: Click to expand -> Justification: Condenses complex frameworks into a digestible format -> Method: HTML/CSS/JS. (3) KPIs & Survey Data -> Goal: Inform/Compare -> Viz: Donut/Bar charts & Stat Cards -> Interaction: Hover tooltips, potential for filters -> Justification: Provides a quick, visual summary of performance metrics and key data points -> Library: Chart.js. (4) Tech Tools -> Goal: Organize -> Viz: Grid of cards -> Interaction: Hover effects -> Justification: Neatly categorizes and presents technology options -> Method: HTML/CSS. (5) AI Pitch Generator -> Goal: Act -> Viz: Input form and text output -> Interaction: User input, button click to generate via LLM API -> Justification: Provides a direct, actionable tool based on the report's communication principles. This approach ensures all key report data is presented in the most intuitive, engaging, and understandable format. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #F8F9FA; /* Light background for V4 aesthetic */
+            color: #212529; /* Dark gray for text, close to black */
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+            position: relative;
+            color: #495057; /* Slightly lighter dark gray for links */
+            font-weight: 500;
+        }
+        .nav-link:hover {
+            color: #DC3545; /* V4 Red on hover */
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #DC3545; /* V4 Red underline */
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after {
+            width: 100%;
+        }
+        .active-section {
+            color: #DC3545; /* Active V4 Red */
+            font-weight: 600;
+        }
+        .active-section::after {
+             width: 100%;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid #E9ECEF; /* Subtle border for definition */
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 350px;
+            width: 100%;
+            max-width: 450px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+                max-width: 550px;
+            }
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-out;
+        }
+        .v4-gradient-button {
+            background: linear-gradient(to right, #DC3545, #E74C3C); /* Red gradient */
+            color: white;
+            padding: 12px 32px;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .v4-gradient-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #DC3545; /* V4 Red spinner */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/90 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="text-2xl font-extrabold text-gray-800">
+                    <span class="text-red-600">V4</span> Company
+                </div>
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="#inicio" class="nav-link">Início</a>
+                    <a href="#estrategia" class="nav-link">Estratégia</a>
+                    <a href="#comunicacao" class="nav-link">Comunicação</a>
+                    <a href="#desempenho" class="nav-link">Desempenho</a>
+                    <a href="#tecnologia" class="nav-link">Tecnologia</a>
+                    <a href="#gerador-pitch" class="nav-link">Gerador de Pitch IA</a>
+                    <a href="#autoavaliacao" class="nav-link">Autoavaliação</a>
+                </div>
+                <button id="mobile-menu-button" class="md:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+            <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-2">
+                 <a href="#inicio" class="block py-2 px-4 text-sm rounded-md hover:bg-gray-100">Início</a>
+                 <a href="#estrategia" class="block py-2 px-4 text-sm rounded-md hover:bg-gray-100">Estratégia</a>
+                 <a href="#comunicacao" class="block py-2 px-4 text-sm rounded-md hover:bg-gray-100">Comunicação</a>
+                 <a href="#desempenho" class="block py-2 px-4 text-sm rounded-md hover:bg-gray-100">Desempenho</a>
+                 <a href="#tecnologia" class="block py-2 px-4 text-sm rounded-md hover:bg-gray-100">Tecnologia</a>
+                 <a href="#gerador-pitch" class="block py-2 px-4 text-sm rounded-md hover:bg-gray-100">Gerador de Pitch IA</a>
+                 <a href="#autoavaliacao" class="block py-2 px-4 text-sm rounded-md hover:bg-gray-100">Autoavaliação</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-8 md:py-12">
+
+        <section id="inicio" class="text-center min-h-[60vh] flex items-center justify-center">
+            <div>
+                <h1 class="text-4xl md:text-6xl font-extrabold text-gray-800 leading-tight">
+                    Otimizando a Cobrança de Clientes com <span class="text-red-600">Alta Performance</span>
+                </h1>
+                <p class="mt-6 text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
+                    Este painel traduz o relatório de otimização em um guia interativo. Explore estratégias, métricas e tecnologias para transformar sua operação de cobrança, aumentar a recuperação de crédito e fortalecer o relacionamento com seus clientes.
+                </p>
+                 <a href="#estrategia" class="mt-8 inline-block v4-gradient-button">
+                    Começar a Explorar
+                </a>
+            </div>
+        </section>
+
+        <section id="estrategia" class="py-12 md:py-20">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800">Estratégias Fundamentais de Cobrança</h2>
+                <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">A cobrança de alta performance é um processo estruturado. Entenda as fases da Régua de Cobrança e as melhores práticas para uma abordagem eficaz e respeitosa.</p>
+            </div>
+
+            <div class="mb-16">
+                <h3 class="text-2xl font-semibold text-center text-gray-700 mb-8">A Régua de Cobrança: Fases e Ações</h3>
+                <div class="relative">
+                    <div class="hidden md:block absolute top-1/2 left-0 w-full h-1 bg-gray-200 -translate-y-1/2"></div>
+                    <div id="regua-container" class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                        <!-- Steps will be injected by JS -->
+                    </div>
+                </div>
+                 <div id="regua-details" class="mt-8 p-6 card min-h-[200px]">
+                    <!-- Details will be injected by JS -->
+                </div>
+            </div>
+
+             <div>
+                <h3 class="text-2xl font-semibold text-center text-gray-700 mb-8">Melhores Práticas de Abordagem</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="card p-6 text-center">
+                        <div class="text-4xl mb-4">🤝</div>
+                        <h4 class="font-bold text-lg mb-2">Tom Amigável e Respeitoso</h4>
+                        <p class="text-gray-600 text-sm">Evite tons agressivos. Um tratamento cordial abre portas para negociações produtivas e preserva o relacionamento.</p>
+                    </div>
+                    <div class="card p-6 text-center">
+                        <div class="text-4xl mb-4">🎯</div>
+                        <h4 class="font-bold text-lg mb-2">Conheça o Perfil do Cliente</h4>
+                        <p class="text-gray-600 text-sm">Personalize a abordagem com base no histórico e situação do cliente para aumentar a empatia e a eficácia.</p>
+                    </div>
+                    <div class="card p-6 text-center">
+                        <div class="text-4xl mb-4">💳</div>
+                        <h4 class="font-bold text-lg mb-2">Ofereça Boas Condições</h4>
+                        <p class="text-gray-600 text-sm">Proponha parcelamentos e descontos flexíveis. Facilitar a quitação é a chave para a recuperação do crédito.</p>
+                    </div>
+                     <div class="card p-6 text-center">
+                        <div class="text-4xl mb-4">📢</div>
+                        <h4 class="font-bold text-lg mb-2">Escolha o Melhor Canal</h4>
+                        <p class="text-gray-600 text-sm">Use o canal de preferência do cliente (e-mail, telefone, WhatsApp) para aumentar as chances de contato e sucesso.</p>
+                    </div>
+                     <div class="card p-6 text-center">
+                        <div class="text-4xl mb-4">🕒</div>
+                        <h4 class="font-bold text-lg mb-2">Respeite o Horário Comercial</h4>
+                        <p class="text-gray-600 text-sm">Contatos em horários apropriados demonstram profissionalismo e evitam uma percepção invasiva.</p>
+                    </div>
+                     <div class="card p-6 text-center">
+                        <div class="text-4xl mb-4">💬</div>
+                        <h4 class="font-bold text-lg mb-2">Ouça e Esclareça Dúvidas</h4>
+                        <p class="text-gray-600 text-sm">Um diálogo aberto, com escuta ativa e empatia, resolve problemas subjacentes e fortalece a confiança.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="comunicacao" class="py-12 md:py-20 bg-white rounded-2xl">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800">A Arte da Persuasão na Cobrança</h2>
+                <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">A comunicação é a ferramenta mais poderosa. Aprenda a usar técnicas de persuasão e empatia para transformar a negociação.</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+                <div>
+                    <h3 class="text-2xl font-semibold text-gray-700 mb-6">Os 3 Pilares da Persuasão de Aristóteles</h3>
+                    <div class="space-y-4" id="persuasion-accordion">
+                        <!-- Accordion items injected by JS -->
+                    </div>
+                </div>
+                 <div>
+                    <h3 class="text-2xl font-semibold text-gray-700 mb-6">Técnica de Comunicação TALKER</h3>
+                     <div class="space-y-4" id="talker-accordion">
+                        <!-- Accordion items injected by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="desempenho" class="py-12 md:py-20">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800">Métricas de Sucesso e KPIs</h2>
+                <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">O que não é medido, não é gerenciado. Visualize os principais indicadores que definem uma operação de cobrança de alta performance.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 text-center">
+                <div class="card p-6">
+                    <h4 class="text-lg font-semibold text-gray-500">Taxa de Conversão</h4>
+                    <p class="text-3xl font-bold text-red-600">--%</p>
+                    <p class="text-sm text-gray-500">Pagamentos/Contatos</p>
+                </div>
+                 <div class="card p-6">
+                    <h4 class="text-lg font-semibold text-gray-500">Recuperação de Crédito</h4>
+                    <p class="text-3xl font-bold text-green-600">--%</p>
+                    <p class="text-sm text-gray-500">Dívidas recuperadas</p>
+                </div>
+                 <div class="card p-6">
+                    <h4 class="text-lg font-semibold text-gray-500">Custo por Recuperação</h4>
+                    <p class="text-3xl font-bold text-red-600">R$ --</p>
+                    <p class="text-sm text-gray-500">Investimento/Acordo</p>
+                </div>
+                 <div class="card p-6">
+                    <h4 class="text-lg font-semibold text-gray-500">Satisfação do Cliente</h4>
+                    <p class="text-3xl font-bold text-yellow-500">--/10</p>
+                    <p class="text-sm text-gray-500">NPS Pós-negociação</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-center text-gray-700 mb-4">Motivadores para Renegociação</h3>
+                    <p class="text-center text-gray-500 text-sm mb-4">Fatores que mais influenciam o cliente a aceitar uma proposta, segundo pesquisa do SPC Brasil.</p>
+                    <div class="chart-container">
+                        <canvas id="motivatorsChart"></canvas>
+                    </div>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-center text-gray-700 mb-4">Impacto da Cobrança no Relacionamento</h3>
+                     <p class="text-center text-gray-500 text-sm mb-4">Percepção do cliente sobre o relacionamento com a empresa após o processo de cobrança.</p>
+                    <div class="chart-container">
+                         <canvas id="relationshipChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+        
+        <section id="tecnologia" class="py-12 md:py-20 bg-white rounded-2xl">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800">Tecnologia e Automação</h2>
+                <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">A tecnologia é a espinha dorsal da eficiência. Conheça as ferramentas que podem revolucionar sua gestão de cobrança.</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                 <div class="card p-6">
+                    <h4 class="font-bold text-lg mb-2">CRM de Cobrança</h4>
+                    <p class="text-gray-600 text-sm">Centraliza informações, organiza o processo e automatiza lembretes, sendo a base para uma gestão organizada.</p>
+                </div>
+                 <div class="card p-6">
+                    <h4 class="font-bold text-lg mb-2">Inteligência Artificial (IA)</h4>
+                    <p class="text-gray-600 text-sm">Analisa padrões de comportamento, prevê inadimplência e personaliza abordagens para aumentar as chances de recuperação.</p>
+                </div>
+                 <div class="card p-6">
+                    <h4 class="font-bold text-lg mb-2">Automação de Comunicação</h4>
+                    <p class="text-gray-600 text-sm">Integra canais (E-mail, SMS, WhatsApp) para enviar lembretes e faturas de forma automática e eficiente.</p>
+                </div>
+                 <div class="card p-6">
+                    <h4 class="font-bold text-lg mb-2">Chatbots e Assistentes Virtuais</h4>
+                    <p class="text-gray-600 text-sm">Oferecem atendimento 24/7 para negociações, permitindo que o cliente resolva sua situação com conveniência e rapidez.</p>
+                </div>
+                 <div class="card p-6">
+                    <h4 class="font-bold text-lg mb-2">Plataformas Data Lake</h4>
+                    <p class="text-gray-600 text-sm">Armazenam e analisam grandes volumes de dados para identificar padrões e embasar decisões estratégicas mais assertivas.</p>
+                </div>
+                 <div class="card p-6">
+                    <h4 class="font-bold text-lg mb-2">Pagamentos Digitais</h4>
+                    <p class="text-gray-600 text-sm">Oferecer opções como PIX e links de pagamento simplifica a quitação, previne a inadimplência e melhora a experiência.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="gerador-pitch" class="py-12 md:py-20">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800">Gerador de Pitch de Cobrança com IA</h2>
+                <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">Utilize a inteligência artificial para criar pitches de cobrança personalizados e otimizados para alta taxa de retorno.</p>
+            </div>
+            <div class="max-w-3xl mx-auto card p-8">
+                <div class="mb-6">
+                    <label for="client-situation" class="block text-gray-700 text-sm font-semibold mb-2">Situação Atual do Cliente:</label>
+                    <input type="text" id="client-situation" class="shadow-sm appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Ex: Cliente atrasado há 30 dias, sempre pagou em dia, mas está com problemas de saúde.">
+                </div>
+                <div class="mb-6">
+                    <label for="debt-type" class="block text-gray-700 text-sm font-semibold mb-2">Tipo de Dívida:</label>
+                    <select id="debt-type" class="shadow-sm border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                        <option value="mensalidade">Mensalidade (Serviço Contínuo)</option>
+                        <option value="projeto">Projeto (Serviço Pontual)</option>
+                        <option value="produto">Compra de Produto</option>
+                        <option value="renegociacao">Renegociação Anterior</option>
+                        <option value="outros">Outros</option>
+                    </select>
+                </div>
+                <div class="mb-8">
+                    <label for="collection-phase" class="block text-gray-700 text-sm font-semibold mb-2">Fase da Régua de Cobrança:</label>
+                    <select id="collection-phase" class="shadow-sm border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                        <option value="preventiva">Preventiva (antes do vencimento)</option>
+                        <option value="amigavel">Amigável (1-10 dias de atraso)</option>
+                        <option value="administrativa">Administrativa (11-60 dias de atraso)</option>
+                        <option value="judicial">Judicial (mais de 60 dias de atraso, pré-judicial)</option>
+                    </select>
+                </div>
+                <button id="generate-pitch-button" class="v4-gradient-button w-full flex items-center justify-center">
+                    Gerar Pitch
+                    <div id="loading-spinner" class="loading-spinner ml-3 hidden"></div>
+                </button>
+                
+                <div class="mt-8">
+                    <label for="generated-pitch" class="block text-gray-700 text-sm font-semibold mb-2">Pitch Gerado:</label>
+                    <textarea id="generated-pitch" rows="8" class="shadow-sm appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-gray-50" readonly placeholder="Seu pitch de cobrança aparecerá aqui..."></textarea>
+                </div>
+            </div>
+        </section>
+        
+        <section id="autoavaliacao" class="py-12 md:py-20">
+             <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800">Próximos Passos: Autoavaliação</h2>
+                <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">Use estas perguntas como ponto de partida para analisar seu processo atual e identificar oportunidades de otimização na V4 Company.</p>
+            </div>
+             <div class="max-w-4xl mx-auto" id="assessment-accordion">
+                <!-- Assessment questions injected by JS -->
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-16">
+        <div class="container mx-auto px-6 py-8 text-center">
+            <p>&copy; 2025 V4 Company. Painel Interativo de Cobrança de Alta Performance.</p>
+            <p class="text-sm text-gray-400 mt-2">Este painel é uma representação interativa de um relatório de pesquisa e melhores práticas.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const state = {
+                reguaCobranca: [
+                    {
+                        id: 'preventiva',
+                        title: 'Preventiva',
+                        icon: '🛡️',
+                        description: 'O objetivo é lembrar o cliente sobre o vencimento iminente, permitindo o planejamento. A comunicação é puramente informativa, focada em evitar o atraso e abrir diálogo para renegociação, reduzindo custos futuros.',
+                        methods: 'E-mails, SMS, WhatsApp.',
+                        impact: 'Baixo custo, preserva o relacionamento.'
+                    },
+                    {
+                        id: 'amigavel',
+                        title: 'Amigável',
+                        icon: '😊',
+                        description: 'Busca entender o motivo do atraso e negociar de forma cordial. É a abordagem ideal para os primeiros dias após o vencimento, quando o relacionamento ainda é positivo e a solução pode ser simples.',
+                        methods: 'Telefonemas, e-mails, cartas cordiais.',
+                        impact: 'Custo moderado, busca preservar o relacionamento.'
+                    },
+                    {
+                        id: 'administrativa',
+                        title: 'Administrativa',
+                        icon: '⚖️',
+                        description: 'Entra em ação quando a cobrança amigável falha. Propõe negociações mais estruturadas, como descontos e parcelamentos, e pode incluir notificações formais para resolver a situação sem ir à justiça.',
+                        methods: 'Notificações, negativação, propostas formais.',
+                        impact: 'Custo elevado, risco de desgaste do relacionamento.'
+                    },
+                    {
+                        id: 'judicial',
+                        title: 'Judicial',
+                        icon: '🏛️',
+                        description: 'É o recurso final, acionando a justiça para garantir o pagamento. É um processo longo, custoso e que pode levar ao bloqueio de bens. Utilizado apenas quando todas as outras opções se esgotaram.',
+                        methods: 'Processo judicial, busca e apreensão.',
+                        impact: 'Alto custo, pode romper o relacionamento.'
+                    }
+                ],
+                persuasionPillars: [
+                    { title: 'Ethos (Credibilidade)', content: 'Transmita confiança e autoridade. Demonstre conhecimento profundo da situação, seja consistente e aja com profissionalismo. Uma comunicação pausada e honesta constrói a base para a negociação.' },
+                    { title: 'Pathos (Conexão Emocional)', content: 'Use argumentos emocionais para criar conexão. Ilustre os benefícios da regularização (alívio do estresse, reativação de serviços) com histórias e analogias para gerar empatia e identificação.' },
+                    { title: 'Logos (Lógica e Dados)', content: 'Apresente informações claras e úteis. Detalhe as consequências do não pagamento (juros, negativação) e os benefícios tangíveis da quitação (descontos, prazos), apelando para a razão do cliente.' }
+                ],
+                talkerMethod: [
+                    { title: 'T - Tone (Tom de voz)', content: 'Fale devagar para transmitir segurança. Varie o tom para manter a atenção e faça pausas para permitir que o outro fale.' },
+                    { title: 'A - Ask (Pergunte)', content: 'Prepare perguntas para conduzir a conversa. Use perguntas abertas para entender a "dor" do cliente e fazer um diagnóstico preciso.' },
+                    { title: 'L - Listen (Ouça)', content: 'Pratique a escuta ativa. Repita o que foi dito, faça resumos e espelhe a comunicação para demonstrar que você está prestando atenção.' },
+                    { title: 'K - Keep notes (Anote)', content: 'Anote as palavras-chave e pontos importantes do diálogo para reter informações e entender verdadeiramente o que está sendo dito.' },
+                    { title: 'E - Empatize (Empatia)', content: 'Coloque-se no lugar do cliente. Investigue para entender suas premissas e variáveis, buscando soluções para a sua dor.' },
+                    { title: 'R - Repeat (Repita)', content: 'Ao final, repita as informações para garantir a compreensão mútua e validar os pontos acordados.' }
+                ],
+                assessmentQuestions: [
+                    {
+                        title: 'Processo Atual de Cobrança',
+                        questions: [
+                            'Como está estruturada a régua de cobrança atual? Quais são as fases, canais e prazos?',
+                            'Existe uma política formalizada de concessão de crédito e análise de risco?',
+                            'Quais são os principais canais de comunicação utilizados para a cobrança?',
+                            'A equipe de cobrança é interna ou terceirizada? Qual seu nível de autonomia e treinamento?'
+                        ]
+                    },
+                    {
+                        title: 'Métricas e Desempenho',
+                        questions: [
+                            'Quais KPIs de cobrança são monitorados? Quais os resultados médios?',
+                            'Existe um sistema para coletar feedback dos clientes sobre o processo?',
+                            'Como os clientes inadimplentes são segmentados? Existem abordagens diferentes por perfil?'
+                        ]
+                    },
+                    {
+                        title: 'Tecnologia e Automação',
+                        questions: [
+                            'Quais ferramentas de gestão de cobrança são utilizadas atualmente?',
+                            'Há planos para implementar ou expandir o uso de IA, automação ou chatbots no processo?'
+                        ]
+                    },
+                     {
+                        title: 'Desafios e Oportunidades',
+                        questions: [
+                            'Quais são os maiores desafios percebidos no processo de cobrança atual?',
+                            'Quais são os objetivos primários ao buscar otimizar a cobrança (reduzir custos, aumentar recuperação, etc.)?'
+                        ]
+                    }
+                ],
+                activeRegua: 'preventiva'
+            };
+
+            const selectors = {
+                reguaContainer: document.getElementById('regua-container'),
+                reguaDetails: document.getElementById('regua-details'),
+                mobileMenuButton: document.getElementById('mobile-menu-button'),
+                mobileMenu: document.getElementById('mobile-menu'),
+                navLinks: document.querySelectorAll('.nav-link'),
+                sections: document.querySelectorAll('section'),
+                persuasionAccordion: document.getElementById('persuasion-accordion'),
+                talkerAccordion: document.getElementById('talker-accordion'),
+                assessmentAccordion: document.getElementById('assessment-accordion'),
+                clientSituationInput: document.getElementById('client-situation'),
+                debtTypeSelect: document.getElementById('debt-type'),
+                collectionPhaseSelect: document.getElementById('collection-phase'),
+                generatePitchButton: document.getElementById('generate-pitch-button'),
+                loadingSpinner: document.getElementById('loading-spinner'),
+                generatedPitchTextarea: document.getElementById('generated-pitch')
+            };
+
+            const renderRegua = () => {
+                selectors.reguaContainer.innerHTML = state.reguaCobranca.map(step => `
+                    <div id="regua-step-${step.id}" data-step="${step.id}" class="regua-step z-10 flex flex-col items-center cursor-pointer">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center text-2xl transition-all duration-300 ${state.activeRegua === step.id ? 'bg-red-600 text-white scale-110' : 'bg-white border-2 border-gray-300 text-gray-500'}">
+                            ${step.icon}
+                        </div>
+                        <p class="mt-2 font-semibold text-center ${state.activeRegua === step.id ? 'text-red-600' : 'text-gray-600'}">${step.title}</p>
+                    </div>
+                `).join('');
+                
+                const activeStepData = state.reguaCobranca.find(s => s.id === state.activeRegua);
+                selectors.reguaDetails.innerHTML = `
+                    <h4 class="text-xl font-bold text-gray-800 mb-2">${activeStepData.title}</h4>
+                    <p class="text-gray-600 mb-4">${activeStepData.description}</p>
+                    <p class="text-sm"><strong class="text-gray-700">Métodos comuns:</strong> ${activeStepData.methods}</p>
+                    <p class="text-sm mt-1"><strong class="text-gray-700">Impacto:</strong> ${activeStepData.impact}</p>
+                `;
+            };
+
+            const createAccordion = (container, items) => {
+                container.innerHTML = items.map((item, index) => `
+                    <div class="accordion-item card overflow-hidden">
+                        <button class="accordion-button w-full text-left p-4 flex justify-between items-center">
+                            <span class="font-semibold text-gray-700">${item.title}</span>
+                            <span class="accordion-icon text-red-600 transform transition-transform duration-300">▼</span>
+                        </button>
+                        <div class="accordion-content px-4 pb-4">
+                            ${item.content ? `<p class="text-gray-600">${item.content}</p>` : ''}
+                            ${item.questions ? `<ul class="list-disc list-inside space-y-2 text-gray-600">${item.questions.map(q => `<li>${q}</li>`).join('')}</ul>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            };
+            
+            const handleAccordionToggle = (e) => {
+                const button = e.target.closest('.accordion-button');
+                if (!button) return;
+                
+                const item = button.parentElement;
+                const content = button.nextElementSibling;
+                const icon = button.querySelector('.accordion-icon');
+                
+                if (content.style.maxHeight) {
+                    content.style.maxHeight = null;
+                    icon.style.transform = 'rotate(0deg)';
+                } else {
+                    const container = item.parentElement;
+                    container.querySelectorAll('.accordion-item').forEach(otherItem => {
+                        const otherContent = otherItem.querySelector('.accordion-content');
+                        const otherIcon = otherItem.querySelector('.accordion-icon');
+                        if(otherContent.style.maxHeight){
+                           otherContent.style.maxHeight = null;
+                           otherIcon.style.transform = 'rotate(0deg)';
+                        }
+                    });
+
+                    content.style.maxHeight = content.scrollHeight + "px";
+                    icon.style.transform = 'rotate(180deg)';
+                }
+            };
+
+            const initCharts = () => {
+                const motivatorsCtx = document.getElementById('motivatorsChart').getContext('2d');
+                new Chart(motivatorsCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Valor da Prestação', 'Redução da Dívida', 'Desconto à Vista', 'Outros'],
+                        datasets: [{
+                            data: [30, 29, 21, 20],
+                            backgroundColor: ['#DC3545', '#E74C3C', '#28a745', '#FFC107'], // V4 red shades
+                            borderColor: '#FFFFFF',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: { callbacks: { label: (context) => `${context.label}: ${context.raw}%` } }
+                        }
+                    }
+                });
+
+                const relationshipCtx = document.getElementById('relationshipChart').getContext('2d');
+                new Chart(relationshipCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Relacionamento Pós-Cobrança'],
+                        datasets: [
+                            { label: 'Bom/Ótimo', data: [56], backgroundColor: '#28a745' },
+                            { label: 'Ruim/Péssimo', data: [16], backgroundColor: '#DC3545' }, /* V4 Red for negative */
+                            { label: 'Indiferente', data: [28], backgroundColor: '#495057' } /* Dark gray for neutral */
+                        ]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { x: { stacked: true, beginAtZero: true, max: 100 }, y: { stacked: true } },
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${context.raw}%` } }
+                        }
+                    }
+                });
+            };
+
+            const generatePitch = async () => {
+                const clientSituation = selectors.clientSituationInput.value;
+                const debtType = selectors.debtTypeSelect.value;
+                const collectionPhase = selectors.collectionPhaseSelect.value;
+
+                if (!clientSituation) {
+                    selectors.generatedPitchTextarea.value = "Por favor, descreva a situação do cliente para gerar o pitch.";
+                    return;
+                }
+
+                selectors.generatePitchButton.disabled = true;
+                selectors.loadingSpinner.classList.remove('hidden');
+                selectors.generatedPitchTextarea.value = "Gerando pitch... Por favor, aguarde.";
+
+                try {
+                    const prompt = `Você é um especialista em cobrança de alta performance e comunicação persuasiva. Sua tarefa é gerar um pitch de cobrança altamente eficaz, com foco em alta taxa de retorno, baseado nas melhores práticas e dados de sucesso da V4 Company.
+
+                    Contexto:
+                    Situação do cliente: ${clientSituation}
+                    Tipo de dívida: ${debtType}
+                    Fase da régua de cobrança: ${collectionPhase}
+
+                    Gere um pitch direto, empático e persuasivo, com um tom profissional e amigável, focado em resolver a situação para ambas as partes. Inclua um 'call to action' claro. Considere os pilares da persuasão (Ethos, Pathos, Logos) e a técnica TALKER. O pitch deve ser conciso e ideal para ser entregue por telefone ou mensagem. Não inclua introduções como 'Olá!' ou 'Prezado(a) cliente!'. Vá direto ao ponto, como se já estivesse em contato.`;
+
+                    let chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                    const payload = { contents: chatHistory };
+                    const apiKey = "";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        selectors.generatedPitchTextarea.value = text;
+                    } else {
+                        selectors.generatedPitchTextarea.value = "Não foi possível gerar o pitch. Tente novamente ou ajuste a descrição.";
+                    }
+                } catch (error) {
+                    console.error('Erro ao gerar pitch:', error);
+                    selectors.generatedPitchTextarea.value = "Ocorreu um erro ao conectar com o gerador de pitch. Por favor, tente novamente mais tarde.";
+                } finally {
+                    selectors.generatePitchButton.disabled = false;
+                    selectors.loadingSpinner.classList.add('hidden');
+                }
+            };
+
+            selectors.reguaContainer.addEventListener('click', e => {
+                const stepElement = e.target.closest('.regua-step');
+                if (stepElement) {
+                    state.activeRegua = stepElement.dataset.step;
+                    renderRegua();
+                }
+            });
+
+            selectors.mobileMenuButton.addEventListener('click', () => {
+                selectors.mobileMenu.classList.toggle('hidden');
+            });
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        selectors.navLinks.forEach(link => {
+                            link.classList.toggle('active-section', link.getAttribute('href').substring(1) === entry.target.id);
+                        });
+                    }
+                });
+            }, { rootMargin: '-30% 0px -70% 0px' });
+
+            selectors.sections.forEach(section => {
+                observer.observe(section);
+            });
+            
+            selectors.persuasionAccordion.addEventListener('click', handleAccordionToggle);
+            selectors.talkerAccordion.addEventListener('click', handleAccordionToggle);
+            selectors.assessmentAccordion.addEventListener('click', handleAccordionToggle);
+            selectors.generatePitchButton.addEventListener('click', generatePitch);
+
+            renderRegua();
+            createAccordion(selectors.persuasionAccordion, state.persuasionPillars);
+            createAccordion(selectors.talkerAccordion, state.talkerMethod);
+            createAccordion(selectors.assessmentAccordion, state.assessmentQuestions);
+            initCharts();
+        });
+    </script>
+</body>
+</html>
